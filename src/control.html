@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>GetVerse</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' file: data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<style>
+  :root { --bg:#12151c; --panel:#1a1f2a; --line:#2a3140; --txt:#e8ebf2; --mut:#8a93a6; --gold:#e9c46a; --acc:#4f8cff; --red:#ff6b6b; --ok:#4ad295; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--txt); font: 15px/1.4 "Segoe UI", system-ui, sans-serif; }
+  body { display: grid; grid-template-columns: 1fr 320px; gap: 16px; padding: 16px; }
+  .col { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  h2 { margin: 0 0 10px; font-size: 12px; letter-spacing: .09em; text-transform: uppercase; color: var(--mut); font-weight: 600; }
+  header { display: flex; align-items: center; justify-content: space-between; }
+  header .brand { font-size: 20px; font-weight: 700; display: flex; gap: 10px; align-items: center; }
+  header .brand img { width: 30px; height: 30px; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+  .seg button { background: transparent; color: var(--mut); border: 0; padding: 7px 14px; cursor: pointer; font: inherit; font-weight: 600; }
+  .seg button.on { background: var(--gold); color: #1b1b1b; }
+  #inputWrap { position: relative; }
+  #ghost, #q { width: 100%; font: 600 30px/1.2 "Segoe UI", system-ui, sans-serif; padding: 14px 16px; border-radius: 10px; }
+  #ghost { position: absolute; inset: 0; color: transparent; pointer-events: none; border: 2px solid transparent; white-space: pre; overflow: hidden; }
+  #ghost b { color: #5b6479; font-weight: 600; }
+  #q { background: #0e1117; color: var(--txt); border: 2px solid var(--line); outline: none; position: relative; }
+  #q:focus { border-color: var(--gold); }
+  #q.bad { border-color: var(--red); }
+  #sugg { position: absolute; top: 100%; left: 0; right: 0; margin-top: 6px; background: #0e1117; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; z-index: 5; display: none; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  #sugg div { padding: 9px 16px; cursor: pointer; display: flex; justify-content: space-between; font-size: 17px; }
+  #sugg div.sel { background: #243049; }
+  #sugg div span { color: var(--mut); font-size: 13px; align-self: center; }
+  #hint { min-height: 22px; margin-top: 8px; color: var(--mut); font-size: 13px; }
+  #hint.err { color: var(--red); }
+  .card .ref { color: var(--gold); font-weight: 700; margin-bottom: 6px; display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+  .card .body { font: 19px/1.5 Georgia, serif; min-height: 56px; }
+  .card .body sup { color: var(--gold); margin-right: 4px; }
+  .card.empty .body { color: var(--mut); font: 14px "Segoe UI"; }
+  .live-badge { font-size: 11px; padding: 2px 9px; border-radius: 99px; background: #243049; color: var(--mut); }
+  .live-badge.on { background: rgba(74,210,149,.15); color: var(--ok); }
+  .live-badge.blank { background: rgba(255,107,107,.15); color: var(--red); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button.btn { background: #232a3a; color: var(--txt); border: 1px solid var(--line); border-radius: 9px; padding: 9px 14px; font: inherit; cursor: pointer; }
+  button.btn:hover { background: #2b344a; }
+  button.btn.primary { background: var(--gold); color: #1b1b1b; border-color: var(--gold); font-weight: 700; }
+  button.btn.danger.on { background: var(--red); color: #fff; border-color: var(--red); }
+  button.btn:disabled { opacity: .4; cursor: default; }
+  #history { display: flex; gap: 6px; flex-wrap: wrap; }
+  #history button { background: #0e1117; border: 1px solid var(--line); color: var(--txt); border-radius: 99px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: 13px; }
+  #history button:hover { border-color: var(--gold); }
+  .bgs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+  .bgs button { border: 2px solid var(--line); border-radius: 8px; padding: 0; overflow: hidden; background: none; cursor: pointer; aspect-ratio: 16/10; position: relative; }
+  .bgs button.on { border-color: var(--gold); }
+  .bgs img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .bgs .custom { position: relative; }
+  .bgs .custom > button:first-child { width: 100%; }
+  .bgs .custom .del { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; aspect-ratio: auto; border-radius: 50%; border: 0; background: rgba(0,0,0,.7); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .bgs .custom .del:hover { background: var(--red); }
+  .bgs button span { position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,.55); font-size: 11px; padding: 2px; text-align: center; }
+  label.sl { display: block; margin: 10px 0 2px; font-size: 13px; color: var(--mut); }
+  input[type=range] { width: 100%; accent-color: var(--gold); }
+  select { width: 100%; background: #0e1117; color: var(--txt); border: 1px solid var(--line); border-radius: 8px; padding: 8px; margin-top: 8px; }
+  .keys { font-size: 12.5px; color: var(--mut); line-height: 1.9; }
+  kbd { background: #0e1117; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; color: var(--txt); font: 600 11.5px "Segoe UI"; }
+</style>
+</head>
+<body>
+  <div class="col">
+    <header>
+      <div class="brand"><img src="../build/icon.png" alt=""> GetVerse</div>
+      <div class="seg" id="versions">
+        <button data-v="lsg">Louis Segond 1910</button>
+        <button data-v="bds">Bible du Semeur</button>
+      </div>
+    </header>
+
+    <div class="panel">
+      <h2>Verset à projeter</h2>
+      <div id="inputWrap">
+        <div id="ghost"></div>
+        <input id="q" type="text" autocomplete="off" spellcheck="false" placeholder="Ex : gn 1 1   ou   jean 3:16" autofocus>
+        <div id="sugg"></div>
+      </div>
+      <div id="hint"></div>
+    </div>
+
+    <div class="panel card empty" id="preview">
+      <h2>Aperçu (Entrée pour projeter)</h2>
+      <div class="ref" id="pref"></div>
+      <div class="body" id="pbody">Tapez un livre, un chapitre et un verset.</div>
+    </div>
+
+    <div class="panel card empty" id="live">
+      <h2>À l'écran</h2>
+      <div class="ref"><span id="lref">-</span><span class="live-badge" id="badge">Rien</span></div>
+      <div class="body" id="lbody"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" id="prev">◀ Précédent</button>
+        <button class="btn primary" id="next">Suivant ▶</button>
+        <button class="btn danger" id="blank">Écran vide (Échap)</button>
+      </div>
+    </div>
+
+    <div class="panel" id="histPanel" style="display:none">
+      <h2>Récents</h2>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="panel">
+      <h2>Projection</h2>
+      <div class="row">
+        <button class="btn primary" id="projToggle">Ouvrir la projection</button>
+        <button class="btn" id="fs" disabled>Plein écran</button>
+      </div>
+      <select id="display" style="display:none"></select>
+    </div>
+    <div class="panel">
+      <h2>Fond d'écran</h2>
+      <div class="bgs" id="bgs"></div>
+      <button class="btn" id="pickImg" style="width:100%">Choisir mon image…</button>
+      <label class="sl">Assombrir le fond : <span id="dimV"></span></label>
+      <input type="range" id="dim" min="0" max="85" step="1">
+      <label class="sl">Taille maximale du texte : <span id="fsV"></span></label>
+      <input type="range" id="fsz" min="4" max="14" step="0.5">
+    </div>
+    <div class="panel">
+      <h2>Raccourcis</h2>
+      <div class="keys">
+        <kbd>Tab</kbd> valider le livre, puis le chapitre<br>
+        <kbd>↑</kbd> <kbd>↓</kbd> choisir parmi les suggestions<br>
+        <kbd>Entrée</kbd> projeter<br>
+        <kbd>←</kbd> <kbd>→</kbd> verset précédent / suivant (après projection)<br>
+        <kbd>Page ↑</kbd> <kbd>Page ↓</kbd> idem à tout moment<br>
+        <kbd>Échap</kbd> écran vide<br>
+        <kbd>F2</kbd> choisir la version<br>
+        Plage : <kbd>jn 3:16-18</kbd> · Même livre : <kbd>5</kbd> (verset) ou <kbd>2:5</kbd>
+      </div>
+    </div>
+  </div>
+  <script src="books.js"></script>
+  <script src="control.js"></script>
+</body>
+</html>

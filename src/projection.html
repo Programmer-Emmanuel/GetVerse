@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>GetVerse - Projection</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src file: data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: none; }
+  #bg, #dim { position: fixed; inset: 0; }
+  #bg { background-size: cover; background-position: center; }
+  #dim { background: #000; opacity: .35; }
+  #stage {
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 6vh 7vw; box-sizing: border-box; text-align: center; color: #fff;
+    font-family: Georgia, "Times New Roman", serif; transition: opacity .25s ease;
+    text-shadow: 0 2px 12px rgba(0,0,0,.65);
+  }
+  #stage.hide { opacity: 0; }
+  #verse { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; line-height: 1.32; font-weight: 600; }
+  #verse span { display: block; }
+  #verse sup { font-size: .5em; opacity: .75; margin-right: .25em; vertical-align: super; }
+  #ref { flex: 0 0 auto; margin-top: 3vh; font-size: 4.2vh; letter-spacing: .04em; color: #f3d98b; font-weight: 700; }
+  #ref small { font-weight: 400; opacity: .8; font-size: .7em; margin-left: .6em; color: #fff; }
+</style>
+</head>
+<body>
+  <div id="bg"></div>
+  <div id="dim"></div>
+  <div id="stage" class="hide">
+    <div id="verse"><span id="vtext"></span></div>
+    <div id="ref"></div>
+  </div>
+  <script src="projection.js"></script>
+</body>
+</html>

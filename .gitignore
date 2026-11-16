@@ -1,0 +1,6 @@
+node_modules
+dist
+*.exe
+*.blockmap
+data/segond_1910.json
+data/bds_fr.json
