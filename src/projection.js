@@ -20,6 +20,17 @@ function render(s) {
   state = s;
   $('bg').style.backgroundImage = s.bgUrl ? `url("${s.bgUrl}")` : 'none';
   $('dim').style.opacity = s.dim ?? 0.35;
+  const logo = $('logo');
+  if (s.logoUrl) {
+    if (logo.getAttribute('src') !== s.logoUrl) logo.src = s.logoUrl;
+    const size = (s.logoSize || 12) + 'vh';
+    logo.style.width = size;
+    logo.style.height = size;
+    logo.style.display = 'block';
+  } else {
+    logo.removeAttribute('src');
+    logo.style.display = 'none';
+  }
   const key = s.blank ? 'blank' : JSON.stringify([s.ref, s.verses, s.version]);
   if (key === current) { if (!s.blank) fit(); return; }
   current = key;

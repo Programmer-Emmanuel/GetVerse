@@ -300,9 +300,122 @@ function renderBgs() {
 $('pickImg').onclick = async () => { const s = await window.api.pickImage(); if (s) { settings = s; renderBgs(); } q.focus(); };
 $('dim').oninput = (e) => { $('dimV').textContent = e.target.value + ' %'; window.api.setSettings({ dim: e.target.value / 100 }); };
 $('fsz').oninput = (e) => { $('fsV').textContent = e.target.value; window.api.setSettings({ fontSize: +e.target.value }); };
+// ---------- Logo de l'église ----------
+function renderLogo() {
+  const thumb = $('logoThumb');
+  thumb.innerHTML = '';
+  if (settings.logo) {
+    const img = document.createElement('img');
+    img.alt = '';
+    img.src = encodeURI('file:///' + settings.logo.replace(/\\/g, '/'));
+    thumb.appendChild(img);
+    thumb.style.borderStyle = 'solid';
+  } else {
+    thumb.innerHTML = '<span>Aucun</span>';
+    thumb.style.borderStyle = 'dashed';
+  }
+  $('delLogo').style.display = settings.logo ? '' : 'none';
+  $('pickLogo').textContent = settings.logo ? 'Changer le logo…' : 'Choisir le logo…';
+}
+$('pickLogo').onclick = async () => { const s = await window.api.pickLogo(); if (s) { settings = s; renderLogo(); } q.focus(); };
+$('delLogo').onclick = async () => { settings = await window.api.setSettings({ logo: null }); renderLogo(); q.focus(); };
+$('logoSz').oninput = (e) => { $('logoV').textContent = e.target.value; window.api.setSettings({ logoSize: +e.target.value }); };
+
+// ---------- Diffusion en direct (OBS…) ----------
+async function renderLive() {
+  const { port } = await window.api.getLiveInfo();
+  const box = $('liveLinks');
+  if (!port) { box.textContent = 'Serveur de diffusion indisponible.'; return; }
+  const base = `http://localhost:${port}/`;
+  const links = [
+    ['Plein écran avec fond', base],
+    ['Fond transparent (texte seul sur la caméra)', base + '?mode=transparent'],
+    ['Bandeau en bas de l\'écran', base + '?mode=bandeau'],
+  ];
+  box.innerHTML = '';
+  links.forEach(([label, url]) => {
+    const row = document.createElement('div');
+    row.className = 'livelink';
+    row.innerHTML = '<small></small><div><input readonly><button class="btn">Copier</button></div>';
+    row.querySelector('small').textContent = label;
+    const input = row.querySelector('input');
+    input.value = url;
+    input.onfocus = () => input.select();
+    const btn = row.querySelector('button');
+    btn.onclick = async () => {
+      try { await navigator.clipboard.writeText(url); } catch { input.select(); document.execCommand('copy'); }
+      btn.textContent = 'Copié ✓';
+      setTimeout(() => (btn.textContent = 'Copier'), 1500);
+    };
+    box.appendChild(row);
+  });
+}
+
+// ---------- Lancer avec… (OBS, Teams, Meet, Zoom…) ----------
+let obsMode = 'full';
+const menu = $('launchMenu'), launchStatus = $('launchStatus');
+const PARTAGE = '« GetVerse - Partage »';
+const GUIDES = {
+  teams: `Teams s'ouvre et la fenêtre ${PARTAGE} est prête.<br>Dans votre réunion : <b>Partager</b> → <b>Fenêtre</b> → ${PARTAGE}.`,
+  meet: `Google Meet s'ouvre et la fenêtre ${PARTAGE} est prête.<br>Dans votre réunion : <b>Présenter maintenant</b> → <b>Une fenêtre</b> → ${PARTAGE}.`,
+  zoom: `Zoom s'ouvre et la fenêtre ${PARTAGE} est prête.<br>Dans votre réunion : <b>Partager l'écran</b> → <b>Fenêtre</b> → ${PARTAGE}.`,
+  other: `La fenêtre ${PARTAGE} est prête.<br>Dans votre application (YouTube, Facebook, WhatsApp…), choisissez de partager une <b>fenêtre</b> puis ${PARTAGE}.`,
+};
+
+function showStatus(html, cls = '') {
+  launchStatus.hidden = false;
+  launchStatus.className = 'launchstatus ' + cls;
+  launchStatus.innerHTML = html;
+  return launchStatus;
+}
+
+$('launchBtn').onclick = (e) => { e.stopPropagation(); menu.hidden = !menu.hidden; };
+document.addEventListener('click', (e) => { if (!menu.contains(e.target)) menu.hidden = true; });
+document.querySelectorAll('#obsMode button').forEach((b) => {
+  b.onclick = () => {
+    obsMode = b.dataset.m;
+    document.querySelectorAll('#obsMode button').forEach((x) => x.classList.toggle('on', x === b));
+    q.focus();
+  };
+});
+window.api.onLaunchProgress((t) => showStatus(t));
+
+menu.querySelectorAll('button[data-k]').forEach((item) => {
+  item.onclick = async () => {
+    menu.hidden = true;
+    const kind = item.dataset.k;
+    const isObs = kind === 'obs' || kind === 'obs-cam';
+    showStatus(isObs ? 'Connexion à OBS…' : 'Ouverture…');
+    const r = await window.api.launch(kind, { mode: obsMode });
+    if (!r.ok) {
+      const el = showStatus(r.message || 'Échec du lancement.', 'err');
+      if (r.code === 'not-installed') {
+        const b = document.createElement('button');
+        b.className = 'btn';
+        b.textContent = 'Télécharger OBS';
+        b.onclick = () => window.api.openUrl('https://obsproject.com/');
+        el.appendChild(document.createElement('br'));
+        el.appendChild(b);
+      }
+      return;
+    }
+    if (!isObs) { showStatus(GUIDES[kind] + '<br>Projetez un verset pour qu\'il apparaisse.', 'ok'); return; }
+    let html = `✓ L'affichage « GetVerse » est dans OBS (scène « ${r.scene.replace(/</g, '&lt;')} »).`;
+    if (kind === 'obs-cam') html += r.cam
+      ? '<br>La caméra virtuelle d\'OBS est démarrée : dans Teams, Meet, Zoom…, choisissez la caméra <b>OBS Virtual Camera</b>.'
+      : '<br>La caméra virtuelle n\'a pas pu démarrer : cliquez sur « Démarrer la caméra virtuelle » dans OBS.';
+    if (obsMode !== 'full') html += '<br>Placez votre caméra dans la même scène : le verset s\'affichera dessus.';
+    const el = showStatus(html + '<br>Projetez un verset pour le voir.', 'ok');
+    const rm = document.createElement('button');
+    rm.className = 'btn';
+    rm.textContent = 'Retirer d\'OBS';
+    rm.onclick = async () => { await window.api.removeFromObs(); showStatus('Affichage retiré d\'OBS.'); };
+    el.appendChild(rm);
+  };
+});
+
 $('projToggle').onclick = () => { window.api.toggleProjection(!projOpen); q.focus(); };
 $('fs').onclick = () => { window.api.toggleFullscreen(); q.focus(); };
-$('display').onchange = (e) => window.api.setSettings({ displayId: +e.target.value });
 
 window.api.onProjectionStatus((s) => {
   const wasOpen = projOpen;
@@ -321,14 +434,9 @@ window.api.onProjectionStatus((s) => {
   $('dim').value = Math.round((settings.dim ?? 0.35) * 100); $('dimV').textContent = $('dim').value + ' %';
   $('fsz').value = settings.fontSize ?? 9; $('fsV').textContent = $('fsz').value;
   renderBgs();
-  const displays = await window.api.getDisplays();
-  if (displays.length > 1) {
-    const sel2 = $('display');
-    sel2.style.display = '';
-    sel2.innerHTML = displays.map((d) => `<option value="${d.id}">${d.label}</option>`).join('');
-    if (settings.displayId) sel2.value = settings.displayId;
-    else sel2.selectedIndex = displays.length - 1;
-  }
+  renderLogo();
+  $('logoSz').value = settings.logoSize ?? 12; $('logoV').textContent = $('logoSz').value;
+  renderLive();
   bible();
   refresh(); refreshLive();
   q.focus();
